@@ -41,3 +41,54 @@ upprepa n @i {
 ## Aritmetik
 
 Aritmetik funkar som i alla andra språk, se variabler för lite exempel på det.
+
+# BNF (WIP)
+
+```bnf
+<add> ::= <add> "+" <integer> | <integer>
+
+
+<integer> ::= <integer> <digit> | <digit>
+
+
+<digit> ::= [0-9]
+
+<letter> ::= [a-z]
+
+<name> ::= <name> <letter> | <letter>
+
+
+<mult> ::= <mult> "*" <integer> | <integer> | <add>
+
+<division> ::= <division> "/" <integer> | <integer> | <add> | <variable>
+
+<negation> ::= <negation> "-" <integer> | <integer> | <add> | <mult>
+
+<assignment_operator> ::= "="
+
+<variable_assignment> ::= "@" <name>
+
+<variable> ::= <name>
+
+<expression> ::= <add> | <mult> | <negation> | <division>
+
+<assignment> ::= <variable_assignment> <assignment_operator> <expression>
+
+<conditional_operator> ::= "==" | "!="
+
+<print> ::= "print" " " (<expression> | <variable>)
+
+<statement> ::= <expression> | <assignment> | <print>
+
+<comparisons> ::=  <expression> <conditional_operator> <expression>
+| <variable> <conditional_operator> <variable>
+|  <expression> <conditional_operator> <variable>
+|  <variable> <conditional_operator> <expression>
+
+<if_statement> ::=
+"om " <comparisons> "{ " <statement> " }"
+| "om " <comparisons> "{ " <statement> " }" " annars " "{ " <statement> " }"
+| "om " <comparisons> "{ " <statement> " }" " annars om " <comparisons> " { " <statement> " }"
+
+<for_loop> ::= "upprepa " <expression> " " <variable_assignment> " { " <statement> " }"
+```
