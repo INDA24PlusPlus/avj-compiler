@@ -19,7 +19,7 @@ Ordet "om" (ja, detta är ett svenskt programmeringsspråk) följt av condition,
 
 om a == 0 då {
     print "en nolla"
-} annars om == 2 {
+} annars om a == 2 {
     print "en tvåa"
 } annars {
     print "någonting annat"
@@ -74,7 +74,7 @@ Aritmetik funkar som i alla andra språk, se variabler för lite exempel på det
 
 <assignment> ::= <variable_assignment> <assignment_operator> <expression>
 
-<conditional_operator> ::= "==" | "!="
+<conditional_operator> ::= "==" | "!=" | "<" | ">" | ">=" | "=<"
 
 <print> ::= "print" " " (<expression> | <variable>)
 
