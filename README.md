@@ -20,9 +20,9 @@ Ordet "om" (ja, detta är ett svenskt programmeringsspråk) följt av condition,
 om a == 0 då {
     print "en nolla"
 } annars om a == 2 {
-    print "en tvåa"
+    print 2
 } annars {
-    print "någonting annat"
+    print 3
 }
 
 ```
@@ -41,6 +41,37 @@ upprepa n @i {
 ## Aritmetik
 
 Aritmetik funkar som i alla andra språk, se variabler för lite exempel på det.
+
+# Fibonacci
+
+Fibonacci fungerar självklart inte än, men koden kommer att se ut på det här sättet:
+
+Note: k i det här fallet måste vara något godtycligt heltal så denna kod kommer därför inte att kompilera.
+Mycket inspiration har tagits från denna [lösning](https://stackoverflow.com/questions/9122277/what-is-a-non-recursive-solution-for-fibonacci-like-sequence-in-java) för en icke-rekursiv lösning av fibonacci i Python men som anpassats för mitt språk.
+
+```
+@n = k
+
+om n == 0 {
+    print 1
+}
+
+om n == 1 {
+    print 3
+}
+
+initial = 1
+second = 3
+result = 0
+
+upprepa n @i {
+    result = 3 * second - initial
+    initial = second
+    second = result
+}
+
+print result
+```
 
 # BNF (WIP)
 

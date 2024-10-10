@@ -7,6 +7,8 @@ enum NodeType {
     BINARYOPERATION(Operation),
     VALUE(i32),
     VARIABLE(String),
+    LOOP(String, String),
+    LOOPBODY,
 }
 
 #[derive(Debug, Clone)]
@@ -130,6 +132,42 @@ pub fn parse(tokens: Vec<Symbol>) -> Vec<ASTNode> {
             }
 
             tree.extend(t);
+            expression_end = None;
+            parent_node = None;
+        } else if Symbol::LOOP == *token {
+            // first travel forward until we hit first right brace
+            for second_index in index..tokens.len() {
+                if tokens[second_index] == Symbol::RIGHTBRACE {
+                    expression_end = Some(second_index);
+                }
+            }
+
+            // everything in between index and expression_end is the loop definition
+            let loop_tokens = &tokens[index..expression_end.unwrap()];
+
+            let mut loop_iterations: String = String::from("");
+            let mut loop_variable: String = String::from("");
+            for token in loop_tokens.iter() {
+                if let Symbol::VALUE(value) = token {
+                    loop_iterations = value.to_string();
+                } else if let Symbol::VARIABLE(variable) = token {
+                    loop_iterations = variable.clone();
+                } else if let Symbol::VARIABLEASSIGN(variable) = token {
+                    loop_variable = variable.clone();
+                }
+            }
+
+            let node = ASTNode {
+                parent: None,
+                token: NodeType::LOOP(loop_iterations, loop_variable),
+            };
+            tree.push(node);
+
+            let loop_body_node = ASTNode {
+                parent: Some(tree.len() - 1),
+                token: NodeType::LOOPBODY,
+            };
+            tree.push(loop_body_node);
         }
     }
 
