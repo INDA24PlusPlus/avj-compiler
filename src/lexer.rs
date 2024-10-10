@@ -1,13 +1,14 @@
 use std::collections::HashMap;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Operation {
     ADD,
     MULTIPLY,
     SUBTRACT,
     DIVIDE,
 }
-#[derive(Debug)]
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Comparison {
     EQ,
     GT,
@@ -15,7 +16,7 @@ pub enum Comparison {
     GEQ,
     LEQ,
 }
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Symbol {
     IF,
     THEN,
@@ -30,6 +31,9 @@ pub enum Symbol {
     Operation(Operation),
     VALUE(i32),
     PRINT,
+    EOL,
+    LEFTPARENT,
+    RIGHTPARENT,
 }
 
 pub fn tokenize(code: &str) -> Result<Vec<Symbol>, &str> {
@@ -75,6 +79,10 @@ pub fn tokenize(code: &str) -> Result<Vec<Symbol>, &str> {
                 tokens.push(Symbol::PRINT);
             } else if characters.contains("då") {
                 tokens.push(Symbol::THEN);
+            } else if characters.contains("(") {
+                tokens.push(Symbol::LEFTPARENT);
+            } else if characters.contains(")") {
+                tokens.push(Symbol::RIGHTPARENT);
             } else if characters.chars().all(|x| x.is_digit(10)) {
                 tokens.push(Symbol::VALUE(characters.parse::<i32>().unwrap()));
             } else if variable_map.get(characters).is_some() {
@@ -83,6 +91,7 @@ pub fn tokenize(code: &str) -> Result<Vec<Symbol>, &str> {
                 return Err("Unknown symbol");
             }
         }
+        tokens.push(Symbol::EOL);
     }
     return Ok(tokens);
 }
