@@ -1,9 +1,9 @@
-use std::ops::Deref;
+use std::{collections::HashMap, ops::Deref};
 
 use crate::lexer::{Comparison, Operation, Symbol};
 
 #[derive(Debug, Clone)]
-enum NodeType {
+pub enum NodeType {
     VARIABLEASSIGNMENT(String),
     IFSTATEMENT(Comparison),
     BINARYOPERATION(Operation),
@@ -12,6 +12,21 @@ enum NodeType {
     LOOP(String, String),
     LOOPBODY,
     IFBODY,
+}
+
+impl std::fmt::Display for NodeType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            NodeType::VARIABLEASSIGNMENT(var) => write!(f, "Variable Assignment: {}", var),
+            NodeType::IFSTATEMENT(comp) => write!(f, "If Statement: {:?}", comp),
+            NodeType::BINARYOPERATION(op) => write!(f, "Binary Operation: {:?}", op),
+            NodeType::VALUE(val) => write!(f, "Value: {}", val),
+            NodeType::VARIABLE(var) => write!(f, "Variable: {}", var),
+            NodeType::LOOP(var, count) => write!(f, "Loop: {} times with iterator {}", count, var),
+            NodeType::LOOPBODY => write!(f, "Loop Body"),
+            NodeType::IFBODY => write!(f, "If Body"),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -240,8 +255,31 @@ pub fn parse(tokens: Vec<Symbol>) -> Vec<ASTNode> {
         }
     }
 
-    println!("Tree: {:?}", tree);
     return tree;
+}
+
+pub fn draw_tree(tree: Vec<ASTNode>) {
+    let mut tree_map: HashMap<Option<usize>, Vec<ASTNode>> = HashMap::new();
+    for node in tree.iter() {
+        tree_map
+            .entry(node.parent)
+            .or_insert(vec![])
+            .push(node.clone());
+    }
+    // loop over the tree vec again and print the children of each node
+    for (key, value) in tree_map.iter() {
+        let parent = key.unwrap_or(0);
+        let parent_string = if parent == 0 && key.is_none() {
+            "ROOT"
+        } else {
+            &tree[parent].token.to_string()
+        };
+        println!("Parent: {:?}", parent_string);
+        for child in value.iter() {
+            print!("    Child: {:?}     ", child.token);
+        }
+        println!("");
+    }
 }
 
 #[cfg(test)]
