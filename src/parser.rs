@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use crate::lexer::{Comparison, Operation, Symbol};
 
 #[derive(Debug, Clone)]
@@ -9,6 +11,7 @@ enum NodeType {
     VARIABLE(String),
     LOOP(String, String),
     LOOPBODY,
+    IFBODY,
 }
 
 #[derive(Debug, Clone)]
@@ -95,8 +98,6 @@ fn build_tree_from_tokens(tokens: Vec<Symbol>) -> Vec<ASTNode> {
     }
 
     tree.push(leaf_stack.pop().unwrap());
-    println!("Leaf stack: {:?}", leaf_stack);
-    println!("Tree: {:?}, size: {}", tree, tree.len());
     return tree;
 }
 
@@ -105,7 +106,12 @@ pub fn parse(tokens: Vec<Symbol>) -> Vec<ASTNode> {
     // Not all tokens are really necessary for creating the AST
     let mut parent_node: Option<usize> = None;
     let mut expression_end: Option<usize> = None;
-    for (index, token) in tokens.iter().enumerate() {
+    let mut tokens = tokens.clone();
+
+    let mut index = 0;
+
+    while index < tokens.len() {
+        let token = &tokens[index];
         if let Symbol::VARIABLEASSIGN(value) = token {
             let node = ASTNode {
                 parent: None,
@@ -117,10 +123,11 @@ pub fn parse(tokens: Vec<Symbol>) -> Vec<ASTNode> {
             for second_index in index..tokens.len() {
                 if tokens[second_index] == Symbol::EOL {
                     expression_end = Some(second_index);
+                    break;
                 }
             }
 
-            let expression_tokens = &tokens[index..=expression_end.unwrap()];
+            let expression_tokens = &tokens.clone()[index..=expression_end.unwrap()];
             let result = shunting_yard(expression_tokens.to_vec(), index);
             let mut t = build_tree_from_tokens(result);
 
@@ -131,19 +138,24 @@ pub fn parse(tokens: Vec<Symbol>) -> Vec<ASTNode> {
                 t[root_index].parent = Some(index);
             }
 
+            index = expression_end.unwrap() + 1;
+
             tree.extend(t);
             expression_end = None;
             parent_node = None;
+
+            // remove all tokens between index and expression_end
         } else if Symbol::LOOP == *token {
             // first travel forward until we hit first right brace
             for second_index in index..tokens.len() {
                 if tokens[second_index] == Symbol::RIGHTBRACE {
                     expression_end = Some(second_index);
+                    break;
                 }
             }
 
             // everything in between index and expression_end is the loop definition
-            let loop_tokens = &tokens[index..expression_end.unwrap()];
+            let loop_tokens = &tokens.clone()[index..expression_end.unwrap()];
 
             let mut loop_iterations: String = String::from("");
             let mut loop_variable: String = String::from("");
@@ -168,9 +180,66 @@ pub fn parse(tokens: Vec<Symbol>) -> Vec<ASTNode> {
                 token: NodeType::LOOPBODY,
             };
             tree.push(loop_body_node);
+
+            index = expression_end.unwrap() + 1;
+            expression_end = None;
+        } else if Symbol::IF == tokens[index] {
+            // find first left brace
+            for second_index in index..tokens.len() {
+                if tokens[second_index] == Symbol::LEFTBRACE {
+                    expression_end = Some(second_index);
+                    break;
+                }
+            }
+
+            let if_tokens = &tokens[index..expression_end.unwrap()];
+            let mut comparison_operator = None;
+            for token in if_tokens.iter() {
+                if let Symbol::Comparison(op) = token {
+                    comparison_operator = Some(op.clone());
+                    break;
+                }
+            }
+
+            let node = ASTNode {
+                parent: None,
+                token: NodeType::IFSTATEMENT(comparison_operator.unwrap()),
+            };
+            tree.push(node);
+
+            // want to add each side of the if operator comparison to the tree
+            for token in if_tokens.iter() {
+                if let Symbol::VARIABLE(variable) = token {
+                    let node = ASTNode {
+                        parent: Some(tree.len() - 1),
+                        token: NodeType::VARIABLE(variable.clone()),
+                    };
+                    tree.push(node);
+                } else if let Symbol::VALUE(value) = token {
+                    let node = ASTNode {
+                        parent: Some(tree.len() - 1),
+                        token: NodeType::VALUE(value.clone()),
+                    };
+                    tree.push(node);
+                }
+            }
+
+            let if_body_node = ASTNode {
+                parent: Some(tree.len() - 1),
+                token: NodeType::IFBODY,
+            };
+            tree.push(if_body_node);
+
+            index = expression_end.unwrap() + 1;
+            expression_end = None;
+        } else if let Symbol::RIGHTBRACE = *token {
+            // find all the
+        } else {
+            index += 1;
         }
     }
 
+    println!("Tree: {:?}", tree);
     return tree;
 }
 
