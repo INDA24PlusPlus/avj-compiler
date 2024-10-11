@@ -13,5 +13,5 @@ fn main() {
     /* let if_statement = "@a = 1 \n om a == 0 då { \n print 1 \n }";
     let tokens = tokenize(if_statement).unwrap();
     let ast = parse(tokens); */
-    draw_tree(if_ast);
+    draw_tree(ast);
 }

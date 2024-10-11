@@ -123,3 +123,12 @@ print result
 
 <for_loop> ::= "upprepa " <expression> " " <variable_assignment> " { " <statement> " }"
 ```
+
+# Träd
+
+Träd kan renderas genom att bygga ast, se `src/main.rs` och sen köra `draw_tree`. För bäst tydlighet, printa både elementen i trädet och själva trädstrukturen som följande:
+
+```rs
+let ast = parse(if_tokens);
+draw_tree(ast);
+```
