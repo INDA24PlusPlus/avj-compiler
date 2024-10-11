@@ -201,6 +201,7 @@ pub fn parse(tokens: Vec<Symbol>) -> Vec<ASTNode> {
                 }
             }
 
+            let if_index = tree.len();
             let node = ASTNode {
                 parent: None,
                 token: NodeType::IFSTATEMENT(comparison_operator.unwrap()),
@@ -211,13 +212,13 @@ pub fn parse(tokens: Vec<Symbol>) -> Vec<ASTNode> {
             for token in if_tokens.iter() {
                 if let Symbol::VARIABLE(variable) = token {
                     let node = ASTNode {
-                        parent: Some(tree.len() - 1),
+                        parent: Some(if_index),
                         token: NodeType::VARIABLE(variable.clone()),
                     };
                     tree.push(node);
                 } else if let Symbol::VALUE(value) = token {
                     let node = ASTNode {
-                        parent: Some(tree.len() - 1),
+                        parent: Some(if_index),
                         token: NodeType::VALUE(value.clone()),
                     };
                     tree.push(node);
@@ -225,15 +226,15 @@ pub fn parse(tokens: Vec<Symbol>) -> Vec<ASTNode> {
             }
 
             let if_body_node = ASTNode {
-                parent: Some(tree.len() - 1),
+                parent: Some(if_index),
                 token: NodeType::IFBODY,
             };
             tree.push(if_body_node);
-
             index = expression_end.unwrap() + 1;
             expression_end = None;
         } else if let Symbol::RIGHTBRACE = *token {
             // find all the
+            index += 1;
         } else {
             index += 1;
         }

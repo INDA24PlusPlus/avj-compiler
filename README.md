@@ -17,7 +17,7 @@ Ordet "om" (ja, detta är ett svenskt programmeringsspråk) följt av condition,
 ```
 @a = 1
 
-om a == 0 då {
+om a == 0 {
     print "en nolla"
 } annars om a == 2 {
     print 2
