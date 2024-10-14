@@ -12,6 +12,7 @@ pub enum NodeType {
     LOOP(String, String),
     LOOPBODY,
     IFBODY,
+    PRINT,
 }
 
 impl std::fmt::Display for NodeType {
@@ -25,6 +26,7 @@ impl std::fmt::Display for NodeType {
             NodeType::LOOP(var, count) => write!(f, "Loop: {} times with iterator {}", count, var),
             NodeType::LOOPBODY => write!(f, "Loop Body"),
             NodeType::IFBODY => write!(f, "If Body"),
+            NodeType::PRINT => write!(f, "Print"),
         }
     }
 }
@@ -119,9 +121,11 @@ fn build_tree_from_tokens(tokens: Vec<Symbol>) -> Vec<ASTNode> {
 pub fn parse(tokens: Vec<Symbol>) -> Vec<ASTNode> {
     let mut tree: Vec<ASTNode> = vec![];
     // Not all tokens are really necessary for creating the AST
-    let mut parent_node: Option<usize> = None;
+    let mut parent_node: Vec<usize> = vec![];
     let mut expression_end: Option<usize> = None;
     let mut tokens = tokens.clone();
+
+    let temp_tokens: Option<Vec<Symbol>> = None;
 
     let mut index = 0;
 
@@ -133,7 +137,7 @@ pub fn parse(tokens: Vec<Symbol>) -> Vec<ASTNode> {
                 token: NodeType::VARIABLEASSIGNMENT(value.clone()),
             };
             tree.push(node);
-            parent_node = Some(index);
+            parent_node.push(index);
             // travel forward until we hit end of line
             for second_index in index..tokens.len() {
                 if tokens[second_index] == Symbol::EOL {
@@ -157,7 +161,7 @@ pub fn parse(tokens: Vec<Symbol>) -> Vec<ASTNode> {
 
             tree.extend(t);
             expression_end = None;
-            parent_node = None;
+            parent_node.pop();
 
             // remove all tokens between index and expression_end
         } else if Symbol::LOOP == *token {
@@ -185,7 +189,7 @@ pub fn parse(tokens: Vec<Symbol>) -> Vec<ASTNode> {
             }
 
             let node = ASTNode {
-                parent: None,
+                parent: parent_node.last().cloned(),
                 token: NodeType::LOOP(loop_iterations, loop_variable),
             };
             tree.push(node);
@@ -198,6 +202,7 @@ pub fn parse(tokens: Vec<Symbol>) -> Vec<ASTNode> {
 
             index = expression_end.unwrap() + 1;
             expression_end = None;
+            parent_node.push(tree.len() - 1);
         } else if Symbol::IF == tokens[index] {
             // find first left brace
             for second_index in index..tokens.len() {
@@ -218,7 +223,7 @@ pub fn parse(tokens: Vec<Symbol>) -> Vec<ASTNode> {
 
             let if_index = tree.len();
             let node = ASTNode {
-                parent: None,
+                parent: parent_node.last().cloned(),
                 token: NodeType::IFSTATEMENT(comparison_operator.unwrap()),
             };
             tree.push(node);
@@ -247,9 +252,20 @@ pub fn parse(tokens: Vec<Symbol>) -> Vec<ASTNode> {
             tree.push(if_body_node);
             index = expression_end.unwrap() + 1;
             expression_end = None;
-        } else if let Symbol::RIGHTBRACE = *token {
-            // find all the
+            parent_node.push(tree.len() - 1);
+        } else if let Symbol::PRINT = *token {
+            let node = ASTNode {
+                parent: parent_node.last().cloned(),
+                token: NodeType::PRINT,
+            };
+            tree.push(node);
             index += 1;
+        } else if let Symbol::RIGHTBRACE = *token {
+            // we want everything in between this right brace and the previous left brace
+            // then we want to rerun this function or while for that entire code block
+
+            index += 1;
+            parent_node.pop();
         } else {
             index += 1;
         }

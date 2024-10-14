@@ -19,7 +19,6 @@ pub enum Comparison {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Symbol {
     IF,
-    THEN,
     ELSE,
     LEFTBRACE,
     RIGHTBRACE,
@@ -77,8 +76,6 @@ pub fn tokenize(code: &str) -> Result<Vec<Symbol>, &str> {
                 variable_map.insert(variable_name, 0);
             } else if characters.contains("print") {
                 tokens.push(Symbol::PRINT);
-            } else if characters.contains("då") {
-                tokens.push(Symbol::THEN);
             } else if characters.contains("(") {
                 tokens.push(Symbol::LEFTPARENT);
             } else if characters.contains(")") {

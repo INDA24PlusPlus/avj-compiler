@@ -60,9 +60,9 @@ om n == 1 {
     print 3
 }
 
-initial = 1
-second = 3
-result = 0
+@initial = 1
+@second = 3
+@result = 0
 
 upprepa n @i {
     result = 3 * second - initial
