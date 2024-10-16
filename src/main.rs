@@ -2,6 +2,7 @@ use lexer::{tokenize, Symbol};
 use parser::{draw_tree, parse, shunting_yard};
 pub mod lexer;
 pub mod parser;
+pub mod semantics;
 fn main() {
     let code = "@a = 3 \n upprepa a @i { \n print i \n }";
     let if_code = "@a = 1 \n om a == 0 { \n print 1 \n }";
