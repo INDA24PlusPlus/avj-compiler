@@ -34,7 +34,17 @@ impl std::fmt::Display for NodeType {
 #[derive(Debug, Clone)]
 pub struct ASTNode {
     parent: Option<usize>,
-    token: NodeType,
+    pub token: NodeType,
+}
+
+pub fn find_child_nodes(tree: &Vec<ASTNode>, parent_index: usize) -> Vec<ASTNode> {
+    let mut child_nodes: Vec<ASTNode> = vec![];
+    for node in tree.iter() {
+        if node.parent == Some(parent_index) {
+            child_nodes.push(node.clone());
+        }
+    }
+    return child_nodes;
 }
 
 fn operator_presedence(op: Operation) -> Option<i32> {

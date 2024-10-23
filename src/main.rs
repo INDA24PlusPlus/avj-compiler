@@ -1,5 +1,7 @@
+use codegen::generate_qbe_code;
 use lexer::{tokenize, Symbol};
 use parser::{draw_tree, parse, shunting_yard};
+pub mod codegen;
 pub mod lexer;
 pub mod parser;
 pub mod semantics;
@@ -35,5 +37,7 @@ print result";
     let tokens = tokenize(if_statement).unwrap();
     let ast = parse(tokens); */
     println!("{:?}", ast);
-    draw_tree(ast);
+
+    //draw_tree(ast.clone());
+    generate_qbe_code(&ast);
 }
