@@ -37,11 +37,11 @@ pub struct ASTNode {
     pub token: NodeType,
 }
 
-pub fn find_child_nodes(tree: &Vec<ASTNode>, parent_index: usize) -> Vec<ASTNode> {
-    let mut child_nodes: Vec<ASTNode> = vec![];
-    for node in tree.iter() {
+pub fn find_child_nodes(tree: &Vec<ASTNode>, parent_index: usize) -> Vec<(usize, ASTNode)> {
+    let mut child_nodes: Vec<(usize, ASTNode)> = vec![];
+    for (index, node) in tree.iter().enumerate() {
         if node.parent == Some(parent_index) {
-            child_nodes.push(node.clone());
+            child_nodes.push((index, node.clone()));
         }
     }
     return child_nodes;

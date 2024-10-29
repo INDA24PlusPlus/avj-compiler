@@ -15,6 +15,7 @@ pub enum Comparison {
     LT,
     GEQ,
     LEQ,
+    NEQ,
 }
 #[derive(Debug, Clone, PartialEq)]
 pub enum Symbol {
@@ -48,6 +49,8 @@ pub fn tokenize(code: &str) -> Result<Vec<Symbol>, &str> {
                 tokens.push(Symbol::Operation(Operation::SUBTRACT));
             } else if characters == "/" {
                 tokens.push(Symbol::Operation(Operation::DIVIDE));
+            } else if characters == "!=" {
+                tokens.push(Symbol::Comparison(Comparison::NEQ));
             } else if characters == "==" {
                 tokens.push(Symbol::Comparison(Comparison::EQ));
             } else if characters == ">=" {

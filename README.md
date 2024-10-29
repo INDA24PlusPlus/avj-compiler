@@ -42,6 +42,10 @@ upprepa n @i {
 
 Aritmetik funkar som i alla andra språk, se variabler för lite exempel på det.
 
+## Prints
+
+Print fungerar som i princip alla andra språk men med begränsningen att programmet avslutas vid ett print, ekvivalent med att returnera 0 i en C main funktion.
+
 # Fibonacci
 
 Fibonacci fungerar självklart inte än, men koden kommer att se ut på det här sättet:
