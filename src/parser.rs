@@ -268,8 +268,32 @@ pub fn parse(tokens: Vec<Symbol>) -> Vec<ASTNode> {
                 parent: parent_node.last().cloned(),
                 token: NodeType::PRINT,
             };
+
+            // parse value / variable node
+            let printed_value = &tokens.clone()[index + 1];
+
+            if !matches!(printed_value, Symbol::VALUE(_))
+                || !matches!(printed_value, Symbol::VARIABLE(_))
+            {
+                panic!("Expected value or variable but got: {:?}", printed_value)
+            }
+
             tree.push(node);
-            index += 1;
+            if let Symbol::VARIABLE(variable) = token {
+                let node = ASTNode {
+                    parent: Some(tree.len() - 1),
+                    token: NodeType::VARIABLE(variable.clone()),
+                };
+                tree.push(node);
+            } else if let Symbol::VALUE(value) = token {
+                let node = ASTNode {
+                    parent: Some(tree.len() - 1),
+                    token: NodeType::VALUE(value.clone()),
+                };
+                tree.push(node);
+            }
+
+            index += 2;
         } else if let Symbol::RIGHTBRACE = *token {
             // we want everything in between this right brace and the previous left brace
             // then we want to rerun this function or while for that entire code block
