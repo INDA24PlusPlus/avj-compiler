@@ -33,7 +33,7 @@ impl std::fmt::Display for NodeType {
 
 #[derive(Debug, Clone)]
 pub struct ASTNode {
-    parent: Option<usize>,
+    pub parent: Option<usize>,
     pub token: NodeType,
 }
 
@@ -162,9 +162,10 @@ pub fn parse(tokens: Vec<Symbol>) -> Vec<ASTNode> {
 
             // find root node and set variable assignment as parent
             let root_node = t.iter().find(|node| node.parent.is_none());
+            println!("Root node: {:?}, index: {}", root_node, index);
             if let Some(root) = root_node {
                 let root_index = t.iter().position(|node| node.parent.is_none()).unwrap();
-                t[root_index].parent = Some(index);
+                t[root_index].parent = Some(tree.len() - 1);
             }
 
             index = expression_end.unwrap() + 1;
@@ -273,19 +274,19 @@ pub fn parse(tokens: Vec<Symbol>) -> Vec<ASTNode> {
             let printed_value = &tokens.clone()[index + 1];
 
             if !matches!(printed_value, Symbol::VALUE(_))
-                || !matches!(printed_value, Symbol::VARIABLE(_))
+                && !matches!(printed_value, Symbol::VARIABLE(_))
             {
                 panic!("Expected value or variable but got: {:?}", printed_value)
             }
 
             tree.push(node);
-            if let Symbol::VARIABLE(variable) = token {
+            if let Symbol::VARIABLE(variable) = printed_value {
                 let node = ASTNode {
                     parent: Some(tree.len() - 1),
                     token: NodeType::VARIABLE(variable.clone()),
                 };
                 tree.push(node);
-            } else if let Symbol::VALUE(value) = token {
+            } else if let Symbol::VALUE(value) = printed_value {
                 let node = ASTNode {
                     parent: Some(tree.len() - 1),
                     token: NodeType::VALUE(value.clone()),

@@ -16,15 +16,20 @@ pub fn generate_qbe_code(ast: &Vec<ASTNode>) -> String {
     while stack.len() > 0 {
         let node = stack.first().unwrap().token.clone();
         let ast_index = ast.len() - stack.len();
+        println!("{:?}", node);
 
         match node {
             NodeType::VARIABLEASSIGNMENT(variable) => {
+                if in_if_body && stack.first().unwrap().parent.is_none() {
+                    code.push_str("\n @ifend \n");
+                    in_if_body = false;
+                }
                 let child_nodes = find_child_nodes(&stack, ast_index);
+                println!("AST index: {}", ast_index);
                 // vi behöver veta vad variabeln heter och för värde den bör ha
                 println!("{:?}", child_nodes.len());
                 println!("{:?}", child_nodes);
                 // börja enkelt genom att anta att det är bara är ett värde i child_nodes, sen kan vi kolla på uttryck och sånt
-                // lite hacky att skapa ny variabel genom att addera 0 till det, men det funkar för tillfället
                 let value = child_nodes.first().unwrap().1.token.clone();
                 match value {
                     NodeType::VALUE(val) => {
@@ -38,9 +43,39 @@ pub fn generate_qbe_code(ast: &Vec<ASTNode>) -> String {
                 }
                 stack.remove(0);
             }
-            NodeType::PRINT => {}
+            NodeType::PRINT => {
+                if in_if_body && stack.first().unwrap().parent.is_none() {
+                    code.push_str("\n @ifend \n");
+                    in_if_body = false;
+                }
+                let child_nodes = find_child_nodes(&stack, ast_index);
+                // eftersom vi endast kan printa ett värde sparar vi det som en data variabel och sen printar ut det
+                if child_nodes.is_empty() {
+                    panic!("Print statement contains nothing")
+                }
+                let value_node = child_nodes.first().unwrap().clone().1;
+
+                let fmt_string = match value_node.token {
+                    NodeType::VALUE(value) => {
+                        format!("data $fmt = {{ b \"{}\", b 0 }}", value)
+                    }
+                    NodeType::VARIABLE(variable) => {
+                        format!("data $fmt = {{ b \"{}\", b 0 }}", variable)
+                    }
+                    _ => String::from(""),
+                };
+
+                code.push_str(&fmt_string);
+                stack.remove(0);
+                stack.remove(0);
+                // also want to remove all child nodes
+            }
             NodeType::BINARYOPERATION(op) => {}
             NodeType::IFSTATEMENT(comparison) => {
+                if in_if_body && stack.first().unwrap().parent.is_none() {
+                    code.push_str("\n @ifend \n");
+                    in_if_body = false;
+                }
                 let comparison_string = comparison_to_qbe(comparison);
                 let child_nodes = find_child_nodes(&stack, ast_index);
                 // kolla två children som antingen är variable eller value
@@ -60,23 +95,37 @@ pub fn generate_qbe_code(ast: &Vec<ASTNode>) -> String {
                 let a = format_values_to_qbe(statement_parameters[0].clone().token);
                 let b = format_values_to_qbe(statement_parameters[1].clone().token);
 
-                let qbe_if_string = format!(
-                    "\n jnz {} {} {}, @ifbody, @ifend \n @ifbody \n",
-                    a, comparison_string, b
-                );
+                println!("{} {}", a, b);
+
+                let qbe_if_string =
+                    format!("\n jnz {} {} {}, @ifbody, @ifend", a, comparison_string, b);
 
                 code.push_str(&qbe_if_string);
-                for (index, child_node) in child_nodes {
-                    if matches!(child_node.token, NodeType::VARIABLE(_))
-                        || matches!(child_node.token, NodeType::VALUE(_))
-                    {
-                        stack.remove(index);
-                    }
+                // Make sure removal is correct
+                // Collect indices to remove first, then remove from largest to smallest
+                let mut indices_to_remove: Vec<usize> = child_nodes
+                    .iter()
+                    .filter(|(_, node)| {
+                        matches!(node.token, NodeType::VARIABLE(_))
+                            || matches!(node.token, NodeType::VALUE(_))
+                    })
+                    .map(|(index, _)| *index)
+                    .collect();
+
+                // Sort in descending order so we remove from end first
+                indices_to_remove.sort_by(|a, b| b.cmp(a));
+
+                // Remove the nodes starting from highest index
+                for index in indices_to_remove {
+                    stack.remove(index);
                 }
                 stack.remove(0);
-                in_if_body = true;
             }
             NodeType::LOOP(iterator_variable, count) => {
+                if in_if_body && stack.first().unwrap().parent.is_none() {
+                    code.push_str("\n @ifend \n");
+                    in_if_body = false;
+                }
                 // initializera iterator_variable till 0
                 let variable_initialization_statement =
                     &format!("%{} =w copy 0", iterator_variable);
@@ -93,6 +142,11 @@ pub fn generate_qbe_code(ast: &Vec<ASTNode>) -> String {
 
                 // skicka in själva loop body koden också
                 let loop_definition_instructions = loop_template(iterator_variable, count);
+            }
+            NodeType::IFBODY => {
+                code.push_str("\n @ifbody \n");
+                in_if_body = true;
+                stack.remove(0);
             }
             _ => {}
         }
