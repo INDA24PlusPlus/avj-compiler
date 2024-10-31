@@ -5,6 +5,7 @@ use crate::lexer::{Comparison, Operation, Symbol};
 #[derive(Debug, Clone)]
 pub enum NodeType {
     VARIABLEASSIGNMENT(String),
+    REASSIGNMENT(String),
     IFSTATEMENT(Comparison),
     BINARYOPERATION(Operation),
     VALUE(i32),
@@ -13,12 +14,14 @@ pub enum NodeType {
     LOOPBODY,
     IFBODY,
     PRINT,
+    EOF,
 }
 
 impl std::fmt::Display for NodeType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             NodeType::VARIABLEASSIGNMENT(var) => write!(f, "Variable Assignment: {}", var),
+            NodeType::REASSIGNMENT(var) => write!(f, "Reassignment: {}", var),
             NodeType::IFSTATEMENT(comp) => write!(f, "If Statement: {:?}", comp),
             NodeType::BINARYOPERATION(op) => write!(f, "Binary Operation: {:?}", op),
             NodeType::VALUE(val) => write!(f, "Value: {}", val),
@@ -27,6 +30,7 @@ impl std::fmt::Display for NodeType {
             NodeType::LOOPBODY => write!(f, "Loop Body"),
             NodeType::IFBODY => write!(f, "If Body"),
             NodeType::PRINT => write!(f, "Print"),
+            NodeType::EOF => write!(f, "EOF"),
         }
     }
 }
@@ -162,7 +166,6 @@ pub fn parse(tokens: Vec<Symbol>) -> Vec<ASTNode> {
 
             // find root node and set variable assignment as parent
             let root_node = t.iter().find(|node| node.parent.is_none());
-            println!("Root node: {:?}, index: {}", root_node, index);
             if let Some(root) = root_node {
                 let root_index = t.iter().position(|node| node.parent.is_none()).unwrap();
                 t[root_index].parent = Some(tree.len() - 1);
@@ -305,6 +308,12 @@ pub fn parse(tokens: Vec<Symbol>) -> Vec<ASTNode> {
             index += 1;
         }
     }
+
+    let eof_node = ASTNode {
+        parent: None,
+        token: NodeType::EOF,
+    };
+    tree.push(eof_node);
 
     return tree;
 }

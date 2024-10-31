@@ -6,6 +6,13 @@ use crate::{
     },
     parser::{find_child_nodes, ASTNode, NodeType},
 };
+
+#[derive(Clone)]
+struct LoopInfo {
+    iterator_variable: String,
+    count: String,
+}
+
 pub fn generate_qbe_code(ast: &Vec<ASTNode>) -> String {
     let mut stack = ast.clone();
 
@@ -13,17 +20,27 @@ pub fn generate_qbe_code(ast: &Vec<ASTNode>) -> String {
 
     let mut in_if_body = false;
 
+    let mut loop_info: Option<LoopInfo> = None;
+
     while stack.len() > 0 {
         let node = stack.first().unwrap().token.clone();
         let ast_index = ast.len() - stack.len();
-        println!("{:?}", node);
+        println!("Nodetype: {:?}", node);
+        if in_if_body && (stack.first().unwrap().parent.is_none() || matches!(node, NodeType::EOF))
+        {
+            code.push_str("\n @ifend \n");
+            in_if_body = false;
+        }
+        if stack.first().unwrap().parent.is_none() || matches!(node, NodeType::EOF) {
+            if let Some(l) = &loop_info {
+                let loop_definition_instructions =
+                    loop_template(l.clone().iterator_variable, l.clone().count);
+                code.push_str(&loop_definition_instructions);
+            }
+        }
 
         match node {
             NodeType::VARIABLEASSIGNMENT(variable) => {
-                if in_if_body && stack.first().unwrap().parent.is_none() {
-                    code.push_str("\n @ifend \n");
-                    in_if_body = false;
-                }
                 let child_nodes = find_child_nodes(&stack, ast_index);
                 println!("AST index: {}", ast_index);
                 // vi behöver veta vad variabeln heter och för värde den bör ha
@@ -72,10 +89,6 @@ pub fn generate_qbe_code(ast: &Vec<ASTNode>) -> String {
             }
             NodeType::BINARYOPERATION(op) => {}
             NodeType::IFSTATEMENT(comparison) => {
-                if in_if_body && stack.first().unwrap().parent.is_none() {
-                    code.push_str("\n @ifend \n");
-                    in_if_body = false;
-                }
                 let comparison_string = comparison_to_qbe(comparison);
                 let child_nodes = find_child_nodes(&stack, ast_index);
                 // kolla två children som antingen är variable eller value
@@ -94,8 +107,6 @@ pub fn generate_qbe_code(ast: &Vec<ASTNode>) -> String {
 
                 let a = format_values_to_qbe(statement_parameters[0].clone().token);
                 let b = format_values_to_qbe(statement_parameters[1].clone().token);
-
-                println!("{} {}", a, b);
 
                 let qbe_if_string =
                     format!("\n jnz {} {} {}, @ifbody, @ifend", a, comparison_string, b);
@@ -121,14 +132,16 @@ pub fn generate_qbe_code(ast: &Vec<ASTNode>) -> String {
                 }
                 stack.remove(0);
             }
+            NodeType::LOOPBODY => {
+                code.push_str("\n @loop \n");
+                stack.remove(0);
+            }
             NodeType::LOOP(iterator_variable, count) => {
-                if in_if_body && stack.first().unwrap().parent.is_none() {
-                    code.push_str("\n @ifend \n");
-                    in_if_body = false;
-                }
                 // initializera iterator_variable till 0
                 let variable_initialization_statement =
                     &format!("%{} =w copy 0", iterator_variable);
+
+                code.push_str(&variable_initialization_statement);
 
                 let mut loop_body_index: Option<usize> = None;
 
@@ -138,20 +151,26 @@ pub fn generate_qbe_code(ast: &Vec<ASTNode>) -> String {
                     }
                 }
 
-                let loop_body_statements = find_child_nodes(&stack, loop_body_index.unwrap());
-
                 // skicka in själva loop body koden också
-                let loop_definition_instructions = loop_template(iterator_variable, count);
+
+                loop_info = Some(LoopInfo {
+                    iterator_variable,
+                    count,
+                });
+                stack.remove(0);
             }
             NodeType::IFBODY => {
                 code.push_str("\n @ifbody \n");
                 in_if_body = true;
                 stack.remove(0);
             }
+            NodeType::EOF => {
+                stack.remove(0);
+            }
             _ => {}
         }
-        println!("{}", code);
     }
 
+    println!("Code start \n {} \n Code end", code);
     return code;
 }
