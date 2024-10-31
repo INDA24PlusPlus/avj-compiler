@@ -1,6 +1,7 @@
 use codegen::generate_qbe_code;
-use lexer::{tokenize, Symbol};
-use parser::{draw_tree, parse, shunting_yard};
+use lexer::{tokenize, Operation, Symbol};
+use lib::helpers::expression_to_qbe;
+use parser::{draw_tree, parse, shunting_yard, ASTNode, NodeType};
 pub mod codegen;
 pub mod lexer;
 pub mod lib;
@@ -31,12 +32,9 @@ upprepa n @i {
 print result";
     let tokens = tokenize(fib).unwrap();
     let ast = parse(tokens.clone());
-    let if_tokens = tokenize(if_code).unwrap();
-    let if_ast = parse(if_tokens);
     /* let if_statement = "@a = 1 \n om a == 0 då { \n print 1 \n }";
     let tokens = tokenize(if_statement).unwrap();
     let ast = parse(tokens); */
-    println!("AST: {:?}", ast);
 
     //draw_tree(ast.clone());
     generate_qbe_code(&ast);

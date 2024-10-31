@@ -1,3 +1,4 @@
+use core::fmt;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -6,6 +7,17 @@ pub enum Operation {
     MULTIPLY,
     SUBTRACT,
     DIVIDE,
+}
+
+impl fmt::Display for Operation {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Operation::ADD => write!(f, "add"),
+            Operation::MULTIPLY => write!(f, "mul"),
+            Operation::SUBTRACT => write!(f, "sub"),
+            Operation::DIVIDE => write!(f, "div"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

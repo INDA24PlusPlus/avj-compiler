@@ -1,16 +1,34 @@
 use crate::{
     lexer::Symbol,
     lib::{
-        helpers::{comparison_to_qbe, format_values_to_qbe},
+        helpers::{assignment_to_qbe, comparison_to_qbe, expression_to_qbe, format_values_to_qbe},
         template::loop_template,
     },
-    parser::{find_child_nodes, ASTNode, NodeType},
+    parser::{draw_tree, find_child_nodes, ASTNode, NodeType},
 };
 
 #[derive(Clone)]
 struct LoopInfo {
     iterator_variable: String,
     count: String,
+}
+
+fn remove_children(child_nodes: Vec<(usize, ASTNode)>, stack: &mut Vec<ASTNode>) {
+    let mut indices_to_remove: Vec<usize> = child_nodes
+        .iter()
+        .filter(|(_, node)| {
+            matches!(node.token, NodeType::VARIABLE(_)) || matches!(node.token, NodeType::VALUE(_))
+        })
+        .map(|(index, _)| *index)
+        .collect();
+
+    // Sort in descending order so we remove from end first
+    indices_to_remove.sort_by(|a, b| b.cmp(a));
+
+    // Remove the nodes starting from highest index
+    for index in indices_to_remove {
+        stack.remove(index);
+    }
 }
 
 pub fn generate_qbe_code(ast: &Vec<ASTNode>) -> String {
@@ -22,10 +40,10 @@ pub fn generate_qbe_code(ast: &Vec<ASTNode>) -> String {
 
     let mut loop_info: Option<LoopInfo> = None;
 
+    let mut index = 0;
     while stack.len() > 0 {
         let node = stack.first().unwrap().token.clone();
         let ast_index = ast.len() - stack.len();
-        println!("Nodetype: {:?}", node);
         if in_if_body && (stack.first().unwrap().parent.is_none() || matches!(node, NodeType::EOF))
         {
             code.push_str("\n @ifend \n");
@@ -42,10 +60,7 @@ pub fn generate_qbe_code(ast: &Vec<ASTNode>) -> String {
         match node {
             NodeType::VARIABLEASSIGNMENT(variable) => {
                 let child_nodes = find_child_nodes(&stack, ast_index);
-                println!("AST index: {}", ast_index);
                 // vi behöver veta vad variabeln heter och för värde den bör ha
-                println!("{:?}", child_nodes.len());
-                println!("{:?}", child_nodes);
                 // börja enkelt genom att anta att det är bara är ett värde i child_nodes, sen kan vi kolla på uttryck och sånt
                 let value = child_nodes.first().unwrap().1.token.clone();
                 match value {
@@ -55,10 +70,23 @@ pub fn generate_qbe_code(ast: &Vec<ASTNode>) -> String {
                     }
                     _ => {}
                 }
-                for (index, _) in child_nodes {
-                    stack.remove(index);
-                }
+                remove_children(child_nodes.clone(), &mut stack);
                 stack.remove(0);
+                index += child_nodes.len() + 1;
+            }
+            NodeType::REASSIGNMENT(variable) => {
+                let child_nodes = find_child_nodes(&stack, ast_index);
+
+                let qbe_instructions = assignment_to_qbe(
+                    variable,
+                    child_nodes.iter().map(|(_, node)| node.clone()).collect(),
+                    ast_index,
+                );
+
+                code.push_str(&qbe_instructions);
+                remove_children(child_nodes.clone(), &mut stack);
+                stack.remove(0);
+                index += child_nodes.len() + 1;
             }
             NodeType::PRINT => {
                 if in_if_body && stack.first().unwrap().parent.is_none() {
@@ -85,28 +113,29 @@ pub fn generate_qbe_code(ast: &Vec<ASTNode>) -> String {
                 code.push_str(&fmt_string);
                 stack.remove(0);
                 stack.remove(0);
-                // also want to remove all child nodes
+
+                index += 2;
             }
-            NodeType::BINARYOPERATION(op) => {}
             NodeType::IFSTATEMENT(comparison) => {
                 let comparison_string = comparison_to_qbe(comparison);
                 let child_nodes = find_child_nodes(&stack, ast_index);
                 // kolla två children som antingen är variable eller value
-                let statement_parameters: Vec<&ASTNode> = child_nodes
+                let statement_parameters: Vec<(usize, ASTNode)> = child_nodes
                     .iter()
                     .filter(|(_, node)| {
                         matches!(node.token, NodeType::VARIABLE(_))
                             || matches!(node.token, NodeType::VALUE(_))
                     })
-                    .map(|(_, node)| node)
+                    .map(|(index, node)| (index.clone(), node.clone()))
                     .collect();
 
                 if statement_parameters.len() < 2 {
+                    println!("Index: {:?}", ast_index);
                     panic!("Error here")
                 }
 
-                let a = format_values_to_qbe(statement_parameters[0].clone().token);
-                let b = format_values_to_qbe(statement_parameters[1].clone().token);
+                let a = format_values_to_qbe(statement_parameters[0].clone().1.token);
+                let b = format_values_to_qbe(statement_parameters[1].clone().1.token);
 
                 let qbe_if_string =
                     format!("\n jnz {} {} {}, @ifbody, @ifend", a, comparison_string, b);
@@ -114,23 +143,16 @@ pub fn generate_qbe_code(ast: &Vec<ASTNode>) -> String {
                 code.push_str(&qbe_if_string);
                 // Make sure removal is correct
                 // Collect indices to remove first, then remove from largest to smallest
-                let mut indices_to_remove: Vec<usize> = child_nodes
-                    .iter()
-                    .filter(|(_, node)| {
-                        matches!(node.token, NodeType::VARIABLE(_))
-                            || matches!(node.token, NodeType::VALUE(_))
-                    })
-                    .map(|(index, _)| *index)
-                    .collect();
-
-                // Sort in descending order so we remove from end first
-                indices_to_remove.sort_by(|a, b| b.cmp(a));
-
-                // Remove the nodes starting from highest index
-                for index in indices_to_remove {
-                    stack.remove(index);
-                }
+                remove_children(
+                    Vec::from([
+                        statement_parameters[0].clone(),
+                        statement_parameters[1].clone(),
+                    ]),
+                    &mut stack,
+                );
                 stack.remove(0);
+
+                index += &child_nodes.len() + 1;
             }
             NodeType::LOOPBODY => {
                 code.push_str("\n @loop \n");
@@ -158,14 +180,17 @@ pub fn generate_qbe_code(ast: &Vec<ASTNode>) -> String {
                     count,
                 });
                 stack.remove(0);
+                index += 1;
             }
             NodeType::IFBODY => {
                 code.push_str("\n @ifbody \n");
                 in_if_body = true;
                 stack.remove(0);
+                index += 1;
             }
             NodeType::EOF => {
                 stack.remove(0);
+                index += 1;
             }
             _ => {}
         }

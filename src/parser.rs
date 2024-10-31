@@ -97,38 +97,60 @@ pub fn shunting_yard(tokens: Vec<Symbol>, parent_index: usize) -> Vec<Symbol> {
     return output_queue;
 }
 
-fn build_tree_from_tokens(tokens: Vec<Symbol>) -> Vec<ASTNode> {
+fn build_tree_from_tokens(tokens: Vec<Symbol>, starting_index: usize) -> Vec<ASTNode> {
     let mut tree: Vec<ASTNode> = vec![];
-    let mut leaf_stack: Vec<ASTNode> = vec![];
+    let mut leaf_stack: Vec<usize> = vec![];
+
     for token in tokens.iter() {
-        if let Symbol::Operation(op) = token {
-            let mut left = leaf_stack.pop().unwrap();
-            let mut right = leaf_stack.pop().unwrap();
-            let node = ASTNode {
-                parent: None,
-                token: NodeType::BINARYOPERATION(op.clone()),
-            };
-            left.parent = Some(tree.len() + 2);
-            right.parent = Some(tree.len() + 2);
-            tree.push(left);
-            tree.push(right);
-            leaf_stack.push(node);
-        } else if let Symbol::VALUE(value) = token {
-            let node = ASTNode {
-                parent: None,
-                token: NodeType::VALUE(value.clone()),
-            };
-            leaf_stack.push(node);
-        } else if let Symbol::VARIABLE(variable) = token {
-            let node = ASTNode {
-                parent: None,
-                token: NodeType::VARIABLE(variable.clone()),
-            };
-            leaf_stack.push(node);
+        match token {
+            Symbol::Operation(op) => {
+                let right_idx = leaf_stack.pop().unwrap();
+                let left_idx = leaf_stack.pop().unwrap();
+
+                let operation_node = ASTNode {
+                    parent: None,
+                    token: NodeType::BINARYOPERATION(op.clone()),
+                };
+
+                tree.push(operation_node);
+                let current_index = tree.len() - 1;
+
+                // Update parents of operands
+                tree[left_idx].parent = Some(current_index);
+                tree[right_idx].parent = Some(current_index);
+
+                leaf_stack.push(current_index);
+            }
+            Symbol::VALUE(value) => {
+                let node = ASTNode {
+                    parent: None,
+                    token: NodeType::VALUE(value.clone()),
+                };
+                tree.push(node);
+                leaf_stack.push(tree.len() - 1);
+            }
+            Symbol::VARIABLE(variable) => {
+                let node = ASTNode {
+                    parent: None,
+                    token: NodeType::VARIABLE(variable.clone()),
+                };
+                tree.push(node);
+                leaf_stack.push(tree.len() - 1);
+            }
+            _ => {}
         }
     }
 
-    tree.push(leaf_stack.pop().unwrap());
+    if starting_index > 0 {
+        for node in tree.iter_mut() {
+            if let Some(parent) = node.parent {
+                node.parent = Some(parent + starting_index);
+            } else if node.parent.is_none() {
+                node.parent = Some(starting_index);
+            }
+        }
+    }
+
     return tree;
 }
 
@@ -162,7 +184,7 @@ pub fn parse(tokens: Vec<Symbol>) -> Vec<ASTNode> {
 
             let expression_tokens = &tokens.clone()[index..=expression_end.unwrap()];
             let result = shunting_yard(expression_tokens.to_vec(), index);
-            let mut t = build_tree_from_tokens(result);
+            let mut t = build_tree_from_tokens(result, tree.len() - 1);
 
             // find root node and set variable assignment as parent
             let root_node = t.iter().find(|node| node.parent.is_none());
@@ -194,11 +216,12 @@ pub fn parse(tokens: Vec<Symbol>) -> Vec<ASTNode> {
                     }
                 }
 
-                let expression_tokens = &tokens.clone()[index..=expression_end.unwrap()];
+                let expression_tokens = &tokens.clone()[(index + 1)..=expression_end.unwrap()];
                 let result = shunting_yard(expression_tokens.to_vec(), index);
-                let mut t = build_tree_from_tokens(result);
+                println!("Result: {:?}", result);
+                let mut t = build_tree_from_tokens(result, tree.len() - 1);
+                println!("Tree: {:?}", t);
 
-                // find root node and set variable assignment as parent
                 let root_node = t.iter().find(|node| node.parent.is_none());
                 if let Some(root) = root_node {
                     let root_index = t.iter().position(|node| node.parent.is_none()).unwrap();
