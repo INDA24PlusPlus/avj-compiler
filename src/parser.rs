@@ -178,10 +178,43 @@ pub fn parse(tokens: Vec<Symbol>) -> Vec<ASTNode> {
             parent_node.pop();
 
             // remove all tokens between index and expression_end
+        } else if let Symbol::VARIABLE(var) = token {
+            if tokens[index + 1] == Symbol::ASSIGNMENTOP {
+                let node = ASTNode {
+                    parent: parent_node.last().cloned(),
+                    token: NodeType::REASSIGNMENT(var.clone()),
+                };
+                tree.push(node);
+                parent_node.push(index);
+
+                for second_index in index..tokens.len() {
+                    if tokens[second_index] == Symbol::EOL {
+                        expression_end = Some(second_index);
+                        break;
+                    }
+                }
+
+                let expression_tokens = &tokens.clone()[index..=expression_end.unwrap()];
+                let result = shunting_yard(expression_tokens.to_vec(), index);
+                let mut t = build_tree_from_tokens(result);
+
+                // find root node and set variable assignment as parent
+                let root_node = t.iter().find(|node| node.parent.is_none());
+                if let Some(root) = root_node {
+                    let root_index = t.iter().position(|node| node.parent.is_none()).unwrap();
+                    t[root_index].parent = Some(tree.len() - 1);
+                }
+
+                index = expression_end.unwrap() + 1;
+
+                tree.extend(t);
+                expression_end = None;
+                parent_node.pop();
+            }
         } else if Symbol::LOOP == *token {
             // first travel forward until we hit first right brace
             for second_index in index..tokens.len() {
-                if tokens[second_index] == Symbol::RIGHTBRACE {
+                if tokens[second_index] == Symbol::LEFTBRACE {
                     expression_end = Some(second_index);
                     break;
                 }
