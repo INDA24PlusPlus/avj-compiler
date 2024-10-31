@@ -2,7 +2,7 @@ use std::fmt::format;
 
 use crate::{
     lexer::Comparison,
-    parser::{ASTNode, NodeType},
+    parser::{find_child_nodes, ASTNode, NodeType},
 };
 
 pub fn comparison_to_qbe(comp: Comparison) -> &'static str {
@@ -36,19 +36,33 @@ pub fn assignment_to_qbe(
     )
 }
 
-pub fn expression_to_qbe(expression: Vec<ASTNode>, starting_index: usize) -> (String, usize) {
-    // we want to take the tree and convert it into a list of qbe instructions
-    // the operations at the bottom of the tree should be executed first
-    // we want to traverse the tree in a post-order manner
-    // we want to convert each node into a qbe instruction
-    // we want to return a list of qbe instructions
+pub fn extract_expression_from_tree(
+    tree: Vec<ASTNode>,
+    starting_index: usize,
+) -> Vec<(usize, ASTNode)> {
+    let mut expression_nodes = Vec::new();
+    for (index, node) in tree.iter().enumerate() {
+        if node.parent.is_some() && index > starting_index {
+            if !matches!(
+                node.token,
+                NodeType::BINARYOPERATION(_) | NodeType::VALUE(_) | NodeType::VARIABLE(_)
+            ) {
+                break;
+            } else {
+                expression_nodes.push((index, node.clone()));
+            }
+        }
+    }
 
+    expression_nodes
+}
+
+pub fn expression_to_qbe(expression: Vec<ASTNode>, starting_index: usize) -> (String, usize) {
     let mut qbe = String::new();
 
     let mut temp_counter = 0;
     let mut stack: Vec<String> = Vec::new();
 
-    // Helper function to get next temporary variable name
     let mut get_next_temp = || {
         temp_counter += 1;
         format!("%t{}", temp_counter)
@@ -58,7 +72,6 @@ pub fn expression_to_qbe(expression: Vec<ASTNode>, starting_index: usize) -> (St
     fn post_order(node: &ASTNode, nodes: &Vec<ASTNode>) -> Vec<usize> {
         let mut result = Vec::new();
 
-        // Get child indices by finding nodes that have this node's index as parent
         let node_index = nodes.iter().position(|n| std::ptr::eq(n, node)).unwrap();
         let children: Vec<&ASTNode> = nodes
             .iter()
@@ -72,7 +85,6 @@ pub fn expression_to_qbe(expression: Vec<ASTNode>, starting_index: usize) -> (St
         result
     }
 
-    // Get root node (node with no parent)
     let root = expression
         .iter()
         .find(|node| node.parent.is_none() || node.parent == Some(starting_index))
@@ -80,7 +92,6 @@ pub fn expression_to_qbe(expression: Vec<ASTNode>, starting_index: usize) -> (St
     let traversal = post_order(root, &expression);
     println!("Traversal: {:?}, Expression: {:?}", traversal, expression);
 
-    // Process nodes in post-order
     for index in traversal {
         let node = &expression[index];
         match &node.token {

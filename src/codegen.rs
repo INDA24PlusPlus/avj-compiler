@@ -1,7 +1,10 @@
 use crate::{
     lexer::Symbol,
     lib::{
-        helpers::{assignment_to_qbe, comparison_to_qbe, expression_to_qbe, format_values_to_qbe},
+        helpers::{
+            assignment_to_qbe, comparison_to_qbe, expression_to_qbe, extract_expression_from_tree,
+            format_values_to_qbe,
+        },
         template::loop_template,
     },
     parser::{draw_tree, find_child_nodes, ASTNode, NodeType},
@@ -75,8 +78,9 @@ pub fn generate_qbe_code(ast: &Vec<ASTNode>) -> String {
                 index += child_nodes.len() + 1;
             }
             NodeType::REASSIGNMENT(variable) => {
-                let child_nodes = find_child_nodes(&stack, ast_index);
-
+                let child_nodes: Vec<(usize, ASTNode)> =
+                    extract_expression_from_tree(ast.clone(), ast_index);
+                println!("Child nodes: {:?}", child_nodes);
                 let qbe_instructions = assignment_to_qbe(
                     variable,
                     child_nodes.iter().map(|(_, node)| node.clone()).collect(),
