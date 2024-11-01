@@ -46,19 +46,31 @@ pub fn generate_qbe_code(ast: &Vec<ASTNode>) -> String {
     let mut loop_info: Option<LoopInfo> = None;
 
     let mut index = 0;
+
+    let mut loop_counter = 0;
+    let mut if_counter = 0;
+
+    let mut print_counter = 0;
     while stack.len() > 0 {
         let node = stack.first().unwrap().token.clone();
         let ast_index = ast.len() - stack.len();
         if in_if_body && (stack.first().unwrap().parent.is_none() || matches!(node, NodeType::EOF))
         {
-            code.push_str("\n @ifend \n");
+            code.push_str(&format!("\n @ifend_{} \n", if_counter));
             in_if_body = false;
+            if_counter += 1;
         }
-        if stack.first().unwrap().parent.is_none() || matches!(node, NodeType::EOF) {
+        if loop_info.is_some()
+            && (stack.first().unwrap().parent.is_none() || matches!(node, NodeType::EOF))
+        {
             if let Some(l) = &loop_info {
-                let loop_definition_instructions =
-                    loop_template(l.clone().iterator_variable, l.clone().count);
+                let loop_definition_instructions = loop_template(
+                    l.clone().iterator_variable,
+                    l.clone().count,
+                    loop_counter.to_string(),
+                );
                 code.push_str(&loop_definition_instructions);
+                loop_info = None;
             }
         }
 
@@ -101,10 +113,6 @@ pub fn generate_qbe_code(ast: &Vec<ASTNode>) -> String {
                 index += child_nodes.len() + 1;
             }
             NodeType::PRINT => {
-                if in_if_body && stack.first().unwrap().parent.is_none() {
-                    code.push_str("\n @ifend \n");
-                    in_if_body = false;
-                }
                 let child_nodes = find_child_nodes(&stack, ast_index);
                 // eftersom vi endast kan printa ett värde sparar vi det som en data variabel och sen printar ut det
                 if child_nodes.is_empty() {
@@ -114,10 +122,10 @@ pub fn generate_qbe_code(ast: &Vec<ASTNode>) -> String {
 
                 let fmt_string = match value_node.token {
                     NodeType::VALUE(value) => {
-                        format!("data $fmt = {{ b \"{}\", b 0 }}", value)
+                        format!("\n call $printf(l $fmt, ..., w {})", value)
                     }
                     NodeType::VARIABLE(variable) => {
-                        format!("data $fmt = {{ b \"{}\", b 0 }}", variable)
+                        format!("\n call $printf(l $fmt, ..., w %{})", variable)
                     }
                     _ => String::from(""),
                 };
@@ -127,6 +135,7 @@ pub fn generate_qbe_code(ast: &Vec<ASTNode>) -> String {
                 stack.remove(0);
 
                 index += 2;
+                print_counter += 1;
             }
             NodeType::IFSTATEMENT(comparison) => {
                 let comparison_string = comparison_to_qbe(comparison);
@@ -149,8 +158,13 @@ pub fn generate_qbe_code(ast: &Vec<ASTNode>) -> String {
                 let a = format_values_to_qbe(statement_parameters[0].clone().1.token);
                 let b = format_values_to_qbe(statement_parameters[1].clone().1.token);
 
-                let qbe_if_string =
-                    format!("\n jnz {} {} {}, @ifbody, @ifend", a, comparison_string, b);
+                let variable_comparison =
+                    format!("%a_{} =w {} {}, {}", if_counter, comparison_string, a, b);
+
+                let qbe_if_string = format!(
+                    "{} \n jnz %a_{}, @ifbody_{}, @ifend_{}",
+                    variable_comparison, if_counter, if_counter, if_counter
+                );
 
                 code.push_str(&qbe_if_string);
                 // Make sure removal is correct
@@ -183,9 +197,10 @@ pub fn generate_qbe_code(ast: &Vec<ASTNode>) -> String {
                 });
                 stack.remove(0);
                 index += 1;
+                loop_counter += 1;
             }
             NodeType::IFBODY => {
-                code.push_str("\n @ifbody \n");
+                code.push_str(&format!("\n @ifbody_{}", if_counter));
                 in_if_body = true;
                 stack.remove(0);
                 index += 1;
@@ -198,6 +213,7 @@ pub fn generate_qbe_code(ast: &Vec<ASTNode>) -> String {
         }
     }
 
+    code.push_str("\n data $fmt = {{ b \"%d\", b 0 }}");
     println!("Code start \n {} \n Code end", code);
     return code;
 }

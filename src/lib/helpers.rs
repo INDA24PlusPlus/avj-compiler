@@ -7,7 +7,7 @@ use crate::{
 
 pub fn comparison_to_qbe(comp: Comparison) -> &'static str {
     match comp {
-        Comparison::EQ => "ceq",
+        Comparison::EQ => "ceql",
         Comparison::GEQ => "csge",
         Comparison::GT => "csgt",
         Comparison::LEQ => "csle",
@@ -31,7 +31,7 @@ pub fn assignment_to_qbe(
 ) -> String {
     let (qbe_expression, variable_count) = expression_to_qbe(expression, starting_index);
     format!(
-        "%{} \n %{} =w copy {}",
+        "%{} \n %{} =w copy t{}",
         qbe_expression, variable, variable_count
     )
 }
@@ -106,7 +106,7 @@ pub fn expression_to_qbe(expression: Vec<ASTNode>, starting_index: usize) -> (St
                 let temp = get_next_temp();
 
                 qbe.push_str(&format!(
-                    "    {} =w {} {}, {}\n",
+                    "{} =w {} {}, {}\n",
                     temp,
                     op.to_string().to_lowercase(),
                     left,
