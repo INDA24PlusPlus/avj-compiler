@@ -42,7 +42,8 @@ pub fn extract_expression_from_tree(
 ) -> Vec<(usize, ASTNode)> {
     let mut expression_nodes = Vec::new();
     for (index, node) in tree.iter().enumerate() {
-        if node.parent.is_some() && index > starting_index {
+        if index > starting_index {
+            println!("Node: {:?}", node);
             if !matches!(
                 node.token,
                 NodeType::BINARYOPERATION(_) | NodeType::VALUE(_) | NodeType::VARIABLE(_)
@@ -68,18 +69,17 @@ pub fn expression_to_qbe(expression: Vec<ASTNode>, starting_index: usize) -> (St
         format!("%t{}", temp_counter)
     };
 
-    // Post-order traversal
-    fn post_order(node: &ASTNode, nodes: &Vec<ASTNode>) -> Vec<usize> {
+    fn post_order(node: &ASTNode, nodes: &Vec<ASTNode>, starting_index: usize) -> Vec<usize> {
         let mut result = Vec::new();
 
         let node_index = nodes.iter().position(|n| std::ptr::eq(n, node)).unwrap();
         let children: Vec<&ASTNode> = nodes
             .iter()
-            .filter(|n| n.parent == Some(node_index))
+            .filter(|n| n.parent == Some(node_index + starting_index + 1))
             .collect();
 
         for child in children {
-            result.extend(post_order(child, nodes));
+            result.extend(post_order(child, nodes, starting_index));
         }
         result.push(node_index);
         result
@@ -89,8 +89,7 @@ pub fn expression_to_qbe(expression: Vec<ASTNode>, starting_index: usize) -> (St
         .iter()
         .find(|node| node.parent.is_none() || node.parent == Some(starting_index))
         .unwrap();
-    let traversal = post_order(root, &expression);
-    println!("Traversal: {:?}, Expression: {:?}", traversal, expression);
+    let traversal = post_order(root, &expression, starting_index);
 
     for index in traversal {
         let node = &expression[index];

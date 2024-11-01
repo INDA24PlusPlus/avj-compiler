@@ -35,7 +35,32 @@ print result";
     /* let if_statement = "@a = 1 \n om a == 0 då { \n print 1 \n }";
     let tokens = tokenize(if_statement).unwrap();
     let ast = parse(tokens); */
-
+    for node in ast.iter() {
+        println!("Node: {:?}", node.token);
+    }
+    let expression = Vec::from([
+        ASTNode {
+            parent: Some(2),
+            token: NodeType::VALUE(3),
+        },
+        ASTNode {
+            parent: Some(2),
+            token: NodeType::VARIABLE("second".to_string()),
+        },
+        ASTNode {
+            parent: Some(4),
+            token: NodeType::BINARYOPERATION(Operation::MULTIPLY),
+        },
+        ASTNode {
+            parent: Some(4),
+            token: NodeType::VARIABLE("initial".to_string()),
+        },
+        ASTNode {
+            parent: None,
+            token: NodeType::BINARYOPERATION(Operation::SUBTRACT),
+        },
+    ]);
+    //let (qbe, _) = expression_to_qbe(expression, 0);
     //draw_tree(ast.clone());
     generate_qbe_code(&ast);
 }

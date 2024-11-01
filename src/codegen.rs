@@ -20,7 +20,9 @@ fn remove_children(child_nodes: Vec<(usize, ASTNode)>, stack: &mut Vec<ASTNode>)
     let mut indices_to_remove: Vec<usize> = child_nodes
         .iter()
         .filter(|(_, node)| {
-            matches!(node.token, NodeType::VARIABLE(_)) || matches!(node.token, NodeType::VALUE(_))
+            matches!(node.token, NodeType::VARIABLE(_))
+                || matches!(node.token, NodeType::VALUE(_))
+                || matches!(node.token, NodeType::BINARYOPERATION(_))
         })
         .map(|(index, _)| *index)
         .collect();
@@ -78,12 +80,18 @@ pub fn generate_qbe_code(ast: &Vec<ASTNode>) -> String {
                 index += child_nodes.len() + 1;
             }
             NodeType::REASSIGNMENT(variable) => {
-                let child_nodes: Vec<(usize, ASTNode)> =
+                let expression_nodes: Vec<(usize, ASTNode)> =
                     extract_expression_from_tree(ast.clone(), ast_index);
-                println!("Child nodes: {:?}", child_nodes);
+                let child_nodes: Vec<(usize, ASTNode)> = expression_nodes
+                    .iter()
+                    .map(|(index, node)| (index.clone() - ast_index, node.clone()))
+                    .collect();
                 let qbe_instructions = assignment_to_qbe(
                     variable,
-                    child_nodes.iter().map(|(_, node)| node.clone()).collect(),
+                    expression_nodes
+                        .iter()
+                        .map(|(_, node)| node.clone())
+                        .collect(),
                     ast_index,
                 );
 
@@ -168,16 +176,6 @@ pub fn generate_qbe_code(ast: &Vec<ASTNode>) -> String {
                     &format!("%{} =w copy 0", iterator_variable);
 
                 code.push_str(&variable_initialization_statement);
-
-                let mut loop_body_index: Option<usize> = None;
-
-                for (index, child_node) in find_child_nodes(&stack, ast_index).iter().enumerate() {
-                    if matches!(child_node.1.token, NodeType::LOOPBODY) {
-                        loop_body_index = Some(index);
-                    }
-                }
-
-                // skicka in själva loop body koden också
 
                 loop_info = Some(LoopInfo {
                     iterator_variable,

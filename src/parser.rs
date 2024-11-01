@@ -144,7 +144,7 @@ fn build_tree_from_tokens(tokens: Vec<Symbol>, starting_index: usize) -> Vec<AST
     if starting_index > 0 {
         for node in tree.iter_mut() {
             if let Some(parent) = node.parent {
-                node.parent = Some(parent + starting_index);
+                node.parent = Some(parent + starting_index + 1);
             } else if node.parent.is_none() {
                 node.parent = Some(starting_index);
             }
@@ -218,9 +218,7 @@ pub fn parse(tokens: Vec<Symbol>) -> Vec<ASTNode> {
 
                 let expression_tokens = &tokens.clone()[(index + 1)..=expression_end.unwrap()];
                 let result = shunting_yard(expression_tokens.to_vec(), index);
-                println!("Result: {:?}", result);
                 let mut t = build_tree_from_tokens(result, tree.len() - 1);
-                println!("Tree: {:?}", t);
 
                 let root_node = t.iter().find(|node| node.parent.is_none());
                 if let Some(root) = root_node {
