@@ -98,16 +98,31 @@ pub fn generate_qbe_code(ast: &Vec<ASTNode>) -> String {
                     .iter()
                     .map(|(index, node)| (index.clone() - ast_index, node.clone()))
                     .collect();
-                let qbe_instructions = assignment_to_qbe(
-                    variable,
-                    expression_nodes
-                        .iter()
-                        .map(|(_, node)| node.clone())
-                        .collect(),
-                    ast_index,
-                );
+                if child_nodes.len() == 1 {
+                    let value = child_nodes.first().unwrap().1.token.clone();
+                    match value {
+                        NodeType::VALUE(val) => {
+                            code.push_str(&format!("%{} =w copy {}\n", variable, val));
+                            // ta hand om uttryck senare
+                        }
+                        NodeType::VARIABLE(var) => {
+                            code.push_str(&format!("%{} =w add %{}, 0\n", variable, var));
+                        }
+                        _ => {}
+                    }
+                } else {
+                    let qbe_instructions = assignment_to_qbe(
+                        variable,
+                        expression_nodes
+                            .iter()
+                            .map(|(_, node)| node.clone())
+                            .collect(),
+                        ast_index,
+                    );
 
-                code.push_str(&qbe_instructions);
+                    code.push_str(&qbe_instructions);
+                }
+
                 remove_children(child_nodes.clone(), &mut stack);
                 stack.remove(0);
                 index += child_nodes.len() + 1;

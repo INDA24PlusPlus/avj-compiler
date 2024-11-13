@@ -31,7 +31,7 @@ pub fn assignment_to_qbe(
 ) -> String {
     let (qbe_expression, variable_count) = expression_to_qbe(expression, starting_index);
     format!(
-        "%{} \n %{} =w copy t{}",
+        "%{} \n %{} =w copy t{} \n",
         qbe_expression, variable, variable_count
     )
 }
